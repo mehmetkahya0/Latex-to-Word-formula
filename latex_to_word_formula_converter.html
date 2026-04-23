@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LaTeX to Word Formula Converter</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        gap: 10px;
+      }
+
+      .topbar__pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-soft);
+        color: var(--text-muted);
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+
+      .topbar__github {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 12px;
+        background: var(--surface-soft);
+        color: var(--text);
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+
+      .topbar__github:hover {
+        filter: brightness(1.03);
+      }
+
+      .topbar__github svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+      }
+
+      .quick-hints {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .hint-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--surface-soft);
+        color: var(--text-muted);
+        font-size: 0.74rem;
+        font-weight: 600;
+      }
+
+      .result__top {
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <div class="topbar">
+          <span class="topbar__pill">Modern UI</span>
+          <a
+            class="topbar__github"
+            href="https://github.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub profiline git"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 .5C5.65.5.5 5.8.5 12.35c0 5.25 3.3 9.7 7.9 11.25.6.1.8-.25.8-.6v-2.1c-3.2.7-3.9-1.4-3.9-1.4-.5-1.35-1.3-1.7-1.3-1.7-1.1-.75.1-.75.1-.75 1.2.1 1.85 1.3 1.85 1.3 1.05 1.85 2.75 1.3 3.45 1 .1-.8.4-1.3.75-1.6-2.55-.3-5.2-1.3-5.2-5.8 0-1.3.45-2.35 1.2-3.2-.1-.3-.55-1.5.1-3.1 0 0 1-.35 3.3 1.25a11.2 11.2 0 0 1 6 0c2.3-1.6 3.3-1.25 3.3-1.25.65 1.6.2 2.8.1 3.1.75.85 1.2 1.9 1.2 3.2 0 4.5-2.65 5.5-5.2 5.8.45.4.8 1.1.8 2.2v3.3c0 .35.2.7.8.6 4.6-1.55 7.9-6 7.9-11.25C23.5 5.8 18.35.5 12 .5z" />
+            </svg>
+            <span>GitHub</span>
+          </a>
+        </div>
+        <h1>LaTeX → Word Formül Dönüştürücü</h1>
+        <p>
+          AI'dan kopyaladığınız metni buraya yapıştırın.
+          <code>$...$</code>, <code>$$...$$</code>, <code>\(...\)</code> ve
+          <code>\[...\]</code> formatları desteklenir.
+        </p>
+        <div class="quick-hints">
+          <span class="hint-chip">Kısayol: Ctrl + Enter</span>
+          <span class="hint-chip" id="formulaHint">Tahmini formül: 0</span>
+          <span class="hint-chip" id="charHint">Karakter: 0</span>
+        </div>
+      </header>
+
+      <section class="panel">
+        <label class="sr-only" for="inp">Giriş metni</label>
+        <textarea
+          id="inp"
+          rows="7"
+          class="input-textarea"
+          placeholder="Örnek: The quadratic formula is $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$ and the energy-mass equivalence is $$E = mc^2$$"
+        ></textarea>
+
+        <div class="actions">
+          <button type="button" class="btn btn--primary" onclick="convert()">
+            Dönüştür
+          </button>
+          <button type="button" class="btn btn--ghost" onclick="loadSample()">
+            Örnek yükle
+          </button>
+          <button type="button" class="btn btn--ghost" onclick="clearInput()">
+            Temizle
+          </button>
+        </div>
+      </section>
+
+      <section id="out" class="result is-hidden" aria-live="polite">
+        <div class="result__top">
+          <span id="fc" class="badge"></span>
+          <span id="updatedAt" class="badge"></span>
+        </div>
+
+        <div id="ren" class="rendered-output"></div>
+
+        <div class="help-card">
+          <p class="help-card__title">Word'e nasıl aktarılır</p>
+          <div class="help-list">
+            <div class="help-item">
+              <span class="tag tag--info">MathML</span>
+              <span
+                >Word'de <strong>Alt +=</strong> ile denklem kutusu açın, içine
+                <strong>Ctrl+V</strong> ile yapıştırın.</span
+              >
+            </div>
+            <div class="help-item">
+              <span class="tag tag--success">PNG</span>
+              <span
+                >Görseli indirip Word'de <strong>Ekle › Resim</strong> ile
+                ekleyin.</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+      const STORE = [];
+      const RE =
+        /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$(?!\$)[^$\n]+?\$|\\\([\s\S]*?\\\))/g;
+
+      const SAMPLE = `The quadratic formula solves $ax^2 + bx + c = 0$ as follows:
+
+$$x = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$
+
+The integral of the Gaussian function is $\\int_{-\\infty}^{\\infty} e^{-x^2}\\,dx = \\sqrt{\\pi}$ and Maxwell's energy equation is:
+
+$$E = mc^2$$
+
+For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using $\\mathbf{x} = \\mathbf{A}^{-1}\\mathbf{b}$ when \\(\\det(\\mathbf{A}) \\neq 0\\).`;
+
+      function loadSample() {
+        document.getElementById("inp").value = SAMPLE;
+        updateInputStats();
+      }
+
+      function updateInputStats() {
+        const text = document.getElementById("inp").value;
+        const formulaCount =
+          (
+            text.match(
+              /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$(?!\$)[^$\n]+?\$|\\\([\s\S]*?\\\))/g,
+            ) || []
+          ).length;
+        document.getElementById("formulaHint").textContent =
+          `Tahmini formül: ${formulaCount}`;
+        document.getElementById("charHint").textContent = `Karakter: ${text.length}`;
+      }
+
+      function clearInput() {
+        document.getElementById("inp").value = "";
+        document.getElementById("ren").innerHTML = "";
+        document.getElementById("fc").textContent = "";
+        document.getElementById("updatedAt").textContent = "";
+        document.getElementById("out").classList.add("is-hidden");
+        updateInputStats();
+      }
+
+      function exLtx(m) {
+        if (m.startsWith("$$")) return { l: m.slice(2, -2).trim(), d: true };
+        if (m.startsWith("\\[")) return { l: m.slice(2, -2).trim(), d: true };
+        if (m.startsWith("\\(")) return { l: m.slice(2, -2).trim(), d: false };
+        return { l: m.slice(1, -1).trim(), d: false };
+      }
+
+      function toast(msg) {
+        const t = document.getElementById("toast");
+        t.textContent = msg;
+        t.classList.add("is-visible");
+        clearTimeout(t._tmr);
+        t._tmr = setTimeout(() => t.classList.remove("is-visible"), 2400);
+      }
+
+      function escH(s) {
+        return s
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function extractMathMLFragment(mathmlHtml) {
+        const doc = new DOMParser().parseFromString(mathmlHtml, "text/html");
+        const math = doc.querySelector("math");
+        return math ? math.outerHTML : mathmlHtml;
+      }
+
+      async function cpML(idx) {
+        const { l, d } = STORE[idx];
+        try {
+          const rawMathml = katex.renderToString(l, {
+            output: "mathml",
+            displayMode: d,
+            throwOnError: false,
+          });
+          const mathml = extractMathMLFragment(rawMathml);
+          const htmlPayload = d ? `<div>${mathml}</div>` : mathml;
+          const plainPayload = l;
+          let copiedRich = false;
+
+          if (navigator.clipboard?.write && window.ClipboardItem) {
+            try {
+              const item = new ClipboardItem({
+                "text/html": new Blob([htmlPayload], { type: "text/html" }),
+                "text/plain": new Blob([plainPayload], { type: "text/plain" }),
+              });
+              await navigator.clipboard.write([item]);
+              copiedRich = true;
+            } catch (clipErr) {
+              copiedRich = false;
+            }
+          }
+
+          if (!copiedRich) {
+            await navigator.clipboard.writeText(plainPayload);
+          }
+
+          toast("✓ Word uyumlu kopyalandı — Alt+= sonra Ctrl+V");
+        } catch (e) {
+          toast("Kopyalama başarısız: " + (e.message || "izin gerekli"));
+        }
+      }
+
+      async function dlPNG(idx) {
+        const el = document.getElementById("fm" + idx);
+        if (!el) return;
+        if (typeof html2canvas === "undefined") {
+          toast("Yükleniyor, lütfen tekrar deneyin");
+          return;
+        }
+
+        const clone = el.cloneNode(true);
+        Object.assign(clone.style, {
+          position: "fixed",
+          top: "-9999px",
+          left: "-9999px",
+          background: "white",
+          padding: "16px 20px",
+          display: "inline-block",
+          borderRadius: "4px",
+          border: "none",
+          fontSize: "16px",
+        });
+        document.body.appendChild(clone);
+
+        try {
+          const canvas = await html2canvas(clone, {
+            backgroundColor: "#ffffff",
+            scale: 3,
+            logging: false,
+          });
+          const a = document.createElement("a");
+          a.download = `formul-${idx + 1}.png`;
+          a.href = canvas.toDataURL("image/png");
+          a.click();
+          toast("✓ PNG indiriliyor...");
+        } catch (e) {
+          toast("Dışa aktarma başarısız: " + e.message);
+        } finally {
+          document.body.removeChild(clone);
+        }
+      }
+
+      function convert() {
+        STORE.length = 0;
+        const text = document.getElementById("inp").value;
+        const out = document.getElementById("out");
+
+        if (!text.trim()) {
+          document.getElementById("ren").innerHTML = "";
+          document.getElementById("fc").textContent = "";
+          document.getElementById("updatedAt").textContent = "";
+          out.classList.add("is-hidden");
+          return;
+        }
+
+        const parts = [];
+        let last = 0;
+        RE.lastIndex = 0;
+        let m;
+
+        while ((m = RE.exec(text)) !== null) {
+          if (m.index > last)
+            parts.push({ t: "txt", c: text.slice(last, m.index) });
+          const { l, d } = exLtx(m[0]);
+          const idx = STORE.length;
+          STORE.push({ l, d });
+          parts.push({ t: "f", idx, d });
+          last = m.index + m[0].length;
+        }
+        if (last < text.length) parts.push({ t: "txt", c: text.slice(last) });
+
+        let html = "";
+        for (const p of parts) {
+          if (p.t === "txt") {
+            html += escH(p.c).replace(/\n/g, "<br>");
+          } else {
+            const { l, d } = STORE[p.idx];
+            let rendered;
+            try {
+              rendered = katex.renderToString(l, {
+                displayMode: d,
+                throwOnError: true,
+              });
+            } catch (e) {
+              rendered = `<span class="formula-error" title="${escH(e.message)}">⚠ ${escH(l)}</span>`;
+            }
+
+            const wrapClass = d
+              ? "formula-item formula-item--block"
+              : "formula-item formula-item--inline";
+            const boxClass = d
+              ? "formula-box formula-box--block"
+              : "formula-box formula-box--inline";
+
+            const btns = `<span class="formula-actions">
+            <button type="button" class="btn btn--chip btn--info" onclick="cpML(${p.idx})">MathML kopyala</button>
+            <button type="button" class="btn btn--chip btn--success" onclick="dlPNG(${p.idx})">PNG indir</button>
+          </span>`;
+
+            html += `<span class="${wrapClass}"><span id="fm${p.idx}" class="${boxClass}">${rendered}</span>${btns}</span>`;
+          }
+        }
+
+        document.getElementById("ren").innerHTML = html;
+        document.getElementById("fc").textContent =
+          `${STORE.length} formül bulundu`;
+        document.getElementById("updatedAt").textContent =
+          `Son dönüşüm: ${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`;
+        out.classList.remove("is-hidden");
+      }
+
+      document.getElementById("inp").addEventListener("input", updateInputStats);
+      document.getElementById("inp").addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.key === "Enter") {
+          e.preventDefault();
+          convert();
+        }
+      });
+      updateInputStats();
+    </script>
+  </body>
+</html>
