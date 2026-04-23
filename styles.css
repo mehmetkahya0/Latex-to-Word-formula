@@ -1,51 +1,27 @@
 :root {
-  --bg: #f4f7ff;
-  --bg-accent: #eef2ff;
-  --surface: #ffffff;
-  --surface-soft: #f8faff;
-  --text: #1f2937;
-  --text-muted: #5b6475;
-  --border: #d8e0f0;
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --info-bg: #e0f2fe;
-  --info-border: #7dd3fc;
-  --info-text: #075985;
-  --success-bg: #dcfce7;
-  --success-border: #86efac;
-  --success-text: #166534;
-  --danger-bg: #fee2e2;
-  --danger-text: #991b1b;
-  --shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
-  --radius-lg: 16px;
-  --radius-md: 12px;
+  --bg: #000000;
+  --bg-accent: #151515;
+  --surface: #0a0a0a;
+  --surface-soft: #111111;
+  --text: #fafafa;
+  --text-muted: #a1a1aa;
+  --border: #27272a;
+  --primary: #ffffff;
+  --primary-hover: #e4e4e7;
+  --info-bg: #111111;
+  --info-border: #3f3f46;
+  --info-text: #e4e4e7;
+  --success-bg: #ffffff;
+  --success-border: #ffffff;
+  --success-text: #09090b;
+  --danger-bg: #2a1418;
+  --danger-text: #fda4af;
+  --shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  --radius-lg: 14px;
+  --radius-md: 10px;
   --radius-sm: 8px;
   --mono: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f172a;
-    --bg-accent: #0b1222;
-    --surface: #111b31;
-    --surface-soft: #17233f;
-    --text: #e5e7eb;
-    --text-muted: #b0bacb;
-    --border: #2b3858;
-    --primary: #818cf8;
-    --primary-hover: #6366f1;
-    --info-bg: #0e3047;
-    --info-border: #0ea5e9;
-    --info-text: #7dd3fc;
-    --success-bg: #123026;
-    --success-border: #22c55e;
-    --success-text: #86efac;
-    --danger-bg: #3a1d23;
-    --danger-text: #fca5a5;
-    --shadow: 0 18px 38px rgba(2, 6, 23, 0.5);
-    color-scheme: dark;
-  }
+  color-scheme: dark;
 }
 
 *,
@@ -60,7 +36,7 @@ body {
   min-height: 100vh;
   font-family: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
   color: var(--text);
-  background: radial-gradient(circle at top, var(--bg-accent), var(--bg));
+  background: radial-gradient(1200px 520px at 50% -14%, var(--bg-accent), var(--bg) 60%);
 }
 
 .app {
@@ -93,6 +69,7 @@ code {
   background: var(--surface-soft);
   font-family: var(--mono);
   font-size: 0.82rem;
+  color: #d4d4d8;
 }
 
 .panel {
@@ -131,43 +108,47 @@ code {
 }
 
 .btn {
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px 16px;
   font-size: 0.9rem;
   font-weight: 600;
   line-height: 1;
+  color: var(--text);
+  background: var(--surface-soft);
   cursor: pointer;
   transition:
-    transform 0.15s ease,
-    filter 0.15s ease,
     border-color 0.2s ease,
-    background 0.2s ease;
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .btn:hover {
-  filter: brightness(1.02);
+  border-color: #3f3f46;
+  background: #18181b;
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: translateY(0);
 }
 
 .btn--primary {
   flex: 1;
   min-width: 180px;
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--primary), #6d28d9);
+  color: #09090b;
+  border-color: var(--primary);
+  background: var(--primary);
 }
 
 .btn--primary:hover {
-  background: linear-gradient(135deg, var(--primary-hover), #5b21b6);
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
 }
 
 .btn--ghost {
-  color: var(--text-muted);
+  color: var(--text);
   border-color: var(--border);
-  background: var(--surface-soft);
+  background: transparent;
 }
 
 .result {
@@ -200,7 +181,7 @@ code {
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background: var(--surface-soft);
+  background: #0d0d0d;
   font-size: 1rem;
   line-height: 2.15;
   word-break: break-word;
@@ -227,7 +208,7 @@ code {
   display: inline-block;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--surface);
+  background: var(--surface-soft);
 }
 
 .formula-box--block {
@@ -323,9 +304,9 @@ code {
 }
 
 .tag--success {
-  color: var(--success-text);
-  border-color: var(--success-border);
-  background: var(--success-bg);
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--surface-soft);
 }
 
 .toast {
