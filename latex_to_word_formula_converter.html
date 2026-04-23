@@ -105,7 +105,6 @@
         </p>
         <div class="quick-hints">
           <span class="hint-chip">Kısayol: Ctrl + Enter</span>
-          <span class="hint-chip" id="formulaHint">Tahmini formül: 0</span>
           <span class="hint-chip" id="charHint">Karakter: 0</span>
         </div>
       </header>
@@ -169,7 +168,7 @@
     <script>
       const STORE = [];
       const RE =
-        /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$(?!\$)[^$\n]+?\$|\\\([\s\S]*?\\\))/g;
+        /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\\begin\{(?:equation|align|aligned|gather|multline|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|cases)\*?\}[\s\S]*?\\end\{(?:equation|align|aligned|gather|multline|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|cases)\*?\}|\$(?!\$)(?:\\.|[^\\$])+\$)/g;
 
       const SAMPLE = `The quadratic formula solves $ax^2 + bx + c = 0$ as follows:
 
@@ -188,15 +187,16 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
 
       function updateInputStats() {
         const text = document.getElementById("inp").value;
-        const formulaCount =
-          (
-            text.match(
-              /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$(?!\$)[^$\n]+?\$|\\\([\s\S]*?\\\))/g,
-            ) || []
-          ).length;
-        document.getElementById("formulaHint").textContent =
-          `Tahmini formül: ${formulaCount}`;
         document.getElementById("charHint").textContent = `Karakter: ${text.length}`;
+      }
+
+      function looksLikeLatexExpression(text) {
+        const s = text.trim();
+        if (!s) return false;
+        if (/\\begin\{[a-zA-Z*]+\}/.test(s)) return true;
+        if (/\\(frac|sqrt|sum|int|prod|lim|alpha|beta|gamma|theta|pi|times|cdot|left|right|mathbf|mathbb|mathrm|operatorname)\b/.test(s))
+          return true;
+        return /[_^]/.test(s);
       }
 
       function clearInput() {
@@ -212,6 +212,7 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
         if (m.startsWith("$$")) return { l: m.slice(2, -2).trim(), d: true };
         if (m.startsWith("\\[")) return { l: m.slice(2, -2).trim(), d: true };
         if (m.startsWith("\\(")) return { l: m.slice(2, -2).trim(), d: false };
+        if (m.startsWith("\\begin{")) return { l: m.trim(), d: true };
         return { l: m.slice(1, -1).trim(), d: false };
       }
 
@@ -340,6 +341,13 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
           last = m.index + m[0].length;
         }
         if (last < text.length) parts.push({ t: "txt", c: text.slice(last) });
+
+        if (!STORE.length && looksLikeLatexExpression(text)) {
+          const idx = 0;
+          STORE.push({ l: text.trim(), d: true });
+          parts.length = 0;
+          parts.push({ t: "f", idx, d: true });
+        }
 
         let html = "";
         for (const p of parts) {
