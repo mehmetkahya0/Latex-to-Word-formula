@@ -8,6 +8,8 @@ A powerful, intuitive web application that seamlessly converts LaTeX mathematica
 - **Automatic Recognition**: Intelligently detects LaTeX formulas embedded in plain text using multiple delimiters
 - **Multi-Format Support**: Handles inline, block, and environment-based LaTeX expressions
 - **Fallback Detection**: Recognizes LaTeX expressions even without explicit delimiters by analyzing mathematical syntax patterns
+- **AI Copy Recovery**: Detects delimiter-free, line-based formulas commonly produced by AI chat copy/paste
+- **macOS-friendly Normalization**: Optionally merges hard-wrapped AI text lines while preserving formula lines
 
 ### Flexible Export Options
 
@@ -15,10 +17,11 @@ A powerful, intuitive web application that seamlessly converts LaTeX mathematica
 - Copies formulas in MathML format, compatible with Microsoft Word's equation editor
 - Creates fully editable, scalable equations in Word documents
 - Preserves all mathematical notation and formatting
+- Uses a robust clipboard pipeline with rich MathML copy and automatic plain LaTeX fallback
 - **How to Use**: 
   - Click "MathML kopyala" (Copy MathML)
-  - Open Word and press `Alt +=` to open the equation editor
-  - Paste with `Ctrl+V` — the formula appears as an editable equation object
+  - Open Word equation editor (`Alt +=` on Windows, or `Insert › Equation` on macOS)
+  - Paste (`Ctrl+V` or `Cmd+V`) — the formula appears as an editable equation object
   - Edit, resize, and format as needed
 
 #### 2. **PNG Export** (High-Quality Images)
@@ -36,7 +39,7 @@ A powerful, intuitive web application that seamlessly converts LaTeX mathematica
 - **Fully Responsive**: Works flawlessly on desktop, tablet, and mobile devices
 - **Real-time Statistics**: Character count updates as you type
 - **Instant Rendering**: Live preview of all detected formulas
-- **Keyboard Shortcuts**: Press `Ctrl + Enter` to convert instantly
+- **Keyboard Shortcuts**: Press `Ctrl + Enter` (Windows/Linux) or `Cmd + Enter` (macOS) to convert instantly
 
 ### Performance & Reliability
 - **Instant Processing**: No server required — everything runs in your browser
@@ -189,8 +192,9 @@ If your LaTeX doesn't use explicit delimiters, the app intelligently detects mat
 
 ### MathML Not Pasting in Word
 - Ensure you're using Word desktop version (web version has limited support)
-- Try pasting in a fresh equation box (`Alt +=`)
+- Try pasting in a fresh equation box (`Alt +=` on Windows, `Insert › Equation` on macOS)
 - Check that your system clipboard hasn't been cleared
+- If your browser blocks rich clipboard types, the app automatically falls back to plain LaTeX copy
 
 ### PNG Quality Issues
 - Increase your browser's zoom level before downloading

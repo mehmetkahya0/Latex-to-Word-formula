@@ -100,6 +100,25 @@ code {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
+.input-prefs {
+  margin-top: -2px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+  user-select: none;
+}
+
+.toggle input {
+  margin-top: 2px;
+  accent-color: #ffffff;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -222,8 +241,23 @@ code {
 .formula-actions {
   display: flex;
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 6px;
+}
+
+.formula-source {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  background: var(--surface-soft);
 }
 
 .btn--chip {

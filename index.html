@@ -104,7 +104,8 @@
           <code>\[...\]</code> formatları desteklenir.
         </p>
         <div class="quick-hints">
-          <span class="hint-chip">Kısayol: Ctrl + Enter</span>
+          <span class="hint-chip">Kısayol: Ctrl/⌘ + Enter</span>
+          <span class="hint-chip" id="platformHint">Platform algılanıyor...</span>
           <span class="hint-chip" id="charHint">Karakter: 0</span>
         </div>
       </header>
@@ -117,6 +118,12 @@
           class="input-textarea"
           placeholder="Örnek: The quadratic formula is $x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$ and the energy-mass equivalence is $$E = mc^2$$"
         ></textarea>
+        <div class="input-prefs">
+          <label class="toggle">
+            <input type="checkbox" id="autoNormalize" checked />
+            <span>AI metnindeki alt alta satırları otomatik birleştir (önerilen)</span>
+          </label>
+        </div>
 
         <div class="actions">
           <button type="button" class="btn btn--primary" onclick="convert()">
@@ -145,8 +152,8 @@
             <div class="help-item">
               <span class="tag tag--info">MathML</span>
               <span
-                >Word'de <strong>Alt +=</strong> ile denklem kutusu açın, içine
-                <strong>Ctrl+V</strong> ile yapıştırın.</span
+                >Windows: <strong>Alt +=</strong>. macOS: <strong>Ekle › Denklem</strong>
+                (veya <strong>Control +=</strong>) açıp yapıştırın.</span
               >
             </div>
             <div class="help-item">
@@ -154,6 +161,13 @@
               <span
                 >Görseli indirip Word'de <strong>Ekle › Resim</strong> ile
                 ekleyin.</span
+              >
+            </div>
+            <div class="help-item">
+              <span class="tag tag--info">Kopyalama</span>
+              <span
+                >Tarayıcı zengin kopyalamayı desteklemezse sistem otomatik olarak
+                LaTeX düz metin yedeğine düşer.</span
               >
             </div>
           </div>
@@ -169,6 +183,20 @@
       const STORE = [];
       const RE =
         /(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\\begin\{(?:equation|align|aligned|gather|multline|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|cases)\*?\}[\s\S]*?\\end\{(?:equation|align|aligned|gather|multline|matrix|pmatrix|bmatrix|vmatrix|Vmatrix|cases)\*?\}|\$(?!\$)(?:\\.|[^\\$])+\$)/g;
+      const UNICODE_LATEX_MAP = [
+        [/−/g, "-"],
+        [/×/g, "\\times "],
+        [/÷/g, "\\div "],
+        [/·/g, "\\cdot "],
+        [/≤/g, "\\leq "],
+        [/≥/g, "\\geq "],
+        [/≠/g, "\\neq "],
+        [/∞/g, "\\infty "],
+        [/∫/g, "\\int "],
+        [/∑/g, "\\sum "],
+        [/√/g, "\\sqrt "],
+        [/π/g, "\\pi "],
+      ];
 
       const SAMPLE = `The quadratic formula solves $ax^2 + bx + c = 0$ as follows:
 
@@ -190,13 +218,68 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
         document.getElementById("charHint").textContent = `Karakter: ${text.length}`;
       }
 
-      function looksLikeLatexExpression(text) {
-        const s = text.trim();
+      function isMac() {
+        return /Mac|iPhone|iPad|iPod/i.test(
+          navigator.userAgent || navigator.platform || ""
+        );
+      }
+
+      function updatePlatformHint() {
+        const target = document.getElementById("platformHint");
+        target.textContent = isMac()
+          ? "Platform: macOS/Word modu"
+          : "Platform: Windows/Word modu";
+      }
+
+      function normalizeFormulaCandidate(raw) {
+        let s = raw.trim();
+        s = s.replace(/^[-*•]\s+/, "").replace(/^\d+[.)]\s+/, "");
+        if (s.startsWith("`") && s.endsWith("`") && s.length > 2) {
+          s = s.slice(1, -1).trim();
+        }
+        for (const [pattern, replacement] of UNICODE_LATEX_MAP) {
+          s = s.replace(pattern, replacement);
+        }
+        return s.replace(/\s{2,}/g, " ").trim();
+      }
+
+      function looksLikeStandaloneFormulaLine(line) {
+        const s = normalizeFormulaCandidate(line);
         if (!s) return false;
-        if (/\\begin\{[a-zA-Z*]+\}/.test(s)) return true;
-        if (/\\(frac|sqrt|sum|int|prod|lim|alpha|beta|gamma|theta|pi|times|cdot|left|right|mathbf|mathbb|mathrm|operatorname)\b/.test(s))
-          return true;
-        return /[_^]/.test(s);
+        if (/^https?:\/\//i.test(s)) return false;
+        if (/^[A-Za-zÇĞİÖŞÜçğıöşü]+\s*:\s*$/.test(s)) return false;
+        if (s.length > 180) return false;
+        if (/^\$\$?$/.test(s) || /^\\[\[\(\]\)]$/.test(s)) return true;
+
+        const words = s.match(/[A-Za-zÇĞİÖŞÜçğıöşü]+/g) || [];
+        const hasCommand = /\\[a-zA-Z]+/.test(s);
+        const hasEnv = /\\begin\{[a-zA-Z*]+\}|\\end\{[a-zA-Z*]+\}/.test(s);
+        const hasSuperSub = /[_^]/.test(s);
+        const hasBraces = /[{}]/.test(s);
+        const hasMathSymbol =
+          /[=<>+\-*/]|\\(leq|geq|neq|times|cdot|to|pm|mp|approx|sim)\b/.test(s);
+        const hasUnicodeMath = /[∫√∞πΣα-ωΑ-Ω≤≥≠±×÷]/.test(s);
+        const hasDigitLetter = /[0-9]/.test(s) && /[A-Za-z]/.test(s);
+
+        let score = 0;
+        if (hasEnv) score += 5;
+        if (hasCommand) score += 3;
+        if (hasSuperSub) score += 2;
+        if (hasBraces) score += 1;
+        if (hasMathSymbol) score += 1;
+        if (hasUnicodeMath) score += 2;
+        if (hasDigitLetter) score += 1;
+        if (/^[A-Za-z][A-Za-z0-9]*(\s*[=<>]\s*.+)$/.test(s) && words.length <= 5)
+          score += 3;
+        if (words.length >= 6 && !hasEnv && !hasSuperSub && !hasBraces) score -= 3;
+        if (words.length > 8 && !hasCommand) score -= 3;
+        if (/[.!?]$/.test(s) && words.length > 5 && !hasCommand) score -= 2;
+
+        return score >= 4;
+      }
+
+      function looksLikeLatexExpression(text) {
+        return looksLikeStandaloneFormulaLine(text);
       }
 
       function clearInput() {
@@ -209,11 +292,15 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
       }
 
       function exLtx(m) {
-        if (m.startsWith("$$")) return { l: m.slice(2, -2).trim(), d: true };
-        if (m.startsWith("\\[")) return { l: m.slice(2, -2).trim(), d: true };
-        if (m.startsWith("\\(")) return { l: m.slice(2, -2).trim(), d: false };
-        if (m.startsWith("\\begin{")) return { l: m.trim(), d: true };
-        return { l: m.slice(1, -1).trim(), d: false };
+        if (m.startsWith("$$"))
+          return { l: normalizeFormulaCandidate(m.slice(2, -2)), d: true };
+        if (m.startsWith("\\["))
+          return { l: normalizeFormulaCandidate(m.slice(2, -2)), d: true };
+        if (m.startsWith("\\("))
+          return { l: normalizeFormulaCandidate(m.slice(2, -2)), d: false };
+        if (m.startsWith("\\begin{"))
+          return { l: normalizeFormulaCandidate(m), d: true };
+        return { l: normalizeFormulaCandidate(m.slice(1, -1)), d: false };
       }
 
       function toast(msg) {
@@ -232,9 +319,64 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
       }
 
       function extractMathMLFragment(mathmlHtml) {
-        const doc = new DOMParser().parseFromString(mathmlHtml, "text/html");
-        const math = doc.querySelector("math");
-        return math ? math.outerHTML : mathmlHtml;
+        const match = mathmlHtml.match(/<math[\s\S]*<\/math>/i);
+        return match ? match[0] : mathmlHtml;
+      }
+
+      function copyWithExecCommand(mathml, htmlPayload, plainPayload) {
+        return new Promise((resolve, reject) => {
+          const onCopy = (ev) => {
+            ev.preventDefault();
+            ev.clipboardData.setData("text/html", htmlPayload);
+            ev.clipboardData.setData("text/plain", plainPayload);
+            try {
+              ev.clipboardData.setData("application/mathml+xml", mathml);
+            } catch (_err) {
+              // Some browsers block custom clipboard MIME types.
+            }
+          };
+
+          document.addEventListener("copy", onCopy);
+          const ok =
+            document.queryCommandSupported &&
+            document.queryCommandSupported("copy") &&
+            document.execCommand("copy");
+          document.removeEventListener("copy", onCopy);
+
+          if (ok) resolve("rich");
+          else reject(new Error("execCommand copy başarısız"));
+        });
+      }
+
+      async function writeBestEffortClipboard(mathml, htmlPayload, plainPayload) {
+        if (navigator.clipboard?.write && window.ClipboardItem) {
+          try {
+            const item = new ClipboardItem({
+              "application/mathml+xml": new Blob([mathml], {
+                type: "application/mathml+xml",
+              }),
+              "text/html": new Blob([htmlPayload], { type: "text/html" }),
+              "text/plain": new Blob([plainPayload], { type: "text/plain" }),
+            });
+            await navigator.clipboard.write([item]);
+            return "rich";
+          } catch (_err) {
+            // Fallback below.
+          }
+        }
+
+        try {
+          return await copyWithExecCommand(mathml, htmlPayload, plainPayload);
+        } catch (_err) {
+          // Final fallback below.
+        }
+
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(plainPayload);
+          return "plain";
+        }
+
+        throw new Error("tarayıcı izin vermedi");
       }
 
       async function cpML(idx) {
@@ -243,31 +385,25 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
           const rawMathml = katex.renderToString(l, {
             output: "mathml",
             displayMode: d,
-            throwOnError: false,
-          });
+              throwOnError: false,
+            });
           const mathml = extractMathMLFragment(rawMathml);
-          const htmlPayload = d ? `<div>${mathml}</div>` : mathml;
-          const plainPayload = l;
-          let copiedRich = false;
+          const htmlPayload = d
+            ? `<meta charset="utf-8"><div>${mathml}</div>`
+            : `<meta charset="utf-8">${mathml}`;
+          const plainPayload = d ? `$$${l}$$` : `$${l}$`;
+          const mode = await writeBestEffortClipboard(
+            mathml,
+            htmlPayload,
+            plainPayload
+          );
+          const pasteKey = isMac() ? "⌘V" : "Ctrl+V";
 
-          if (navigator.clipboard?.write && window.ClipboardItem) {
-            try {
-              const item = new ClipboardItem({
-                "text/html": new Blob([htmlPayload], { type: "text/html" }),
-                "text/plain": new Blob([plainPayload], { type: "text/plain" }),
-              });
-              await navigator.clipboard.write([item]);
-              copiedRich = true;
-            } catch (clipErr) {
-              copiedRich = false;
-            }
+          if (mode === "rich") {
+            toast(`✓ MathML kopyalandı — Word denklem kutusunda ${pasteKey}`);
+          } else {
+            toast(`✓ LaTeX kopyalandı — Word denklem kutusunda ${pasteKey}`);
           }
-
-          if (!copiedRich) {
-            await navigator.clipboard.writeText(plainPayload);
-          }
-
-          toast("✓ Word uyumlu kopyalandı — Alt+= sonra Ctrl+V");
         } catch (e) {
           toast("Kopyalama başarısız: " + (e.message || "izin gerekli"));
         }
@@ -313,12 +449,115 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
         }
       }
 
+      function normalizeAIWrappedText(inputText) {
+        const lines = inputText.replace(/\r\n?/g, "\n").split("\n");
+        const out = [];
+        let paragraph = [];
+
+        const flushParagraph = () => {
+          if (!paragraph.length) return;
+          out.push(paragraph.join(" "));
+          paragraph = [];
+        };
+
+        for (const raw of lines) {
+          const line = raw.trim();
+          if (!line) {
+            flushParagraph();
+            out.push("");
+            continue;
+          }
+
+          const isListLine =
+            /^[-*•]\s+/.test(line) || /^\d+[.)]\s+/.test(line);
+          const isFormulaLine = looksLikeStandaloneFormulaLine(line);
+
+          if (isListLine || isFormulaLine) {
+            flushParagraph();
+            out.push(line);
+            continue;
+          }
+
+          paragraph.push(line);
+        }
+
+        flushParagraph();
+        return out.join("\n");
+      }
+
+      function mergeAdjacentText(parts) {
+        const merged = [];
+        for (const part of parts) {
+          const prev = merged[merged.length - 1];
+          if (part.t === "txt" && prev && prev.t === "txt") {
+            prev.c += part.c;
+          } else {
+            merged.push(part);
+          }
+        }
+        return merged;
+      }
+
+      function splitTextByHeuristicFormulas(text) {
+        if (!text) return [];
+        const out = [];
+        const lines = text.split("\n");
+
+        for (let i = 0; i < lines.length; i += 1) {
+          const line = lines[i];
+          const trimmed = line.trim();
+
+          if (trimmed && looksLikeStandaloneFormulaLine(trimmed)) {
+            out.push({
+              t: "f",
+              l: normalizeFormulaCandidate(trimmed),
+              d: true,
+              source: "heuristic",
+            });
+          } else {
+            out.push({ t: "txt", c: line });
+          }
+
+          if (i < lines.length - 1) out.push({ t: "txt", c: "\n" });
+        }
+
+        return mergeAdjacentText(out);
+      }
+
+      function parseParts(text) {
+        const base = [];
+        let last = 0;
+        RE.lastIndex = 0;
+        let m;
+
+        while ((m = RE.exec(text)) !== null) {
+          if (m.index > last) {
+            base.push({ t: "txt", c: text.slice(last, m.index) });
+          }
+          const { l, d } = exLtx(m[0]);
+          base.push({ t: "f", l, d, source: "explicit" });
+          last = m.index + m[0].length;
+        }
+        if (last < text.length) base.push({ t: "txt", c: text.slice(last) });
+        if (!base.length) base.push({ t: "txt", c: text });
+
+        const finalParts = [];
+        for (const part of base) {
+          if (part.t === "txt") {
+            finalParts.push(...splitTextByHeuristicFormulas(part.c));
+          } else {
+            finalParts.push(part);
+          }
+        }
+        return mergeAdjacentText(finalParts);
+      }
+
       function convert() {
         STORE.length = 0;
-        const text = document.getElementById("inp").value;
+        const rawText = document.getElementById("inp").value;
         const out = document.getElementById("out");
 
-        if (!text.trim()) {
+        if (!rawText.trim()) {
           document.getElementById("ren").innerHTML = "";
           document.getElementById("fc").textContent = "";
           document.getElementById("updatedAt").textContent = "";
@@ -326,35 +565,35 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
           return;
         }
 
-        const parts = [];
-        let last = 0;
-        RE.lastIndex = 0;
-        let m;
+        const autoNormalize = document.getElementById("autoNormalize").checked;
+        const text = autoNormalize
+          ? normalizeAIWrappedText(rawText)
+          : rawText.replace(/\r\n?/g, "\n");
 
-        while ((m = RE.exec(text)) !== null) {
-          if (m.index > last)
-            parts.push({ t: "txt", c: text.slice(last, m.index) });
-          const { l, d } = exLtx(m[0]);
-          const idx = STORE.length;
-          STORE.push({ l, d });
-          parts.push({ t: "f", idx, d });
-          last = m.index + m[0].length;
-        }
-        if (last < text.length) parts.push({ t: "txt", c: text.slice(last) });
-
-        if (!STORE.length && looksLikeLatexExpression(text)) {
-          const idx = 0;
-          STORE.push({ l: text.trim(), d: true });
-          parts.length = 0;
-          parts.push({ t: "f", idx, d: true });
+        let parts = parseParts(text);
+        if (!parts.some((p) => p.t === "f") && looksLikeLatexExpression(text.trim())) {
+          parts = [
+            {
+              t: "f",
+              l: normalizeFormulaCandidate(text),
+              d: true,
+              source: "fallback",
+            },
+          ];
         }
 
         let html = "";
+        let heuristicCount = 0;
+
         for (const p of parts) {
           if (p.t === "txt") {
             html += escH(p.c).replace(/\n/g, "<br>");
           } else {
-            const { l, d } = STORE[p.idx];
+            const idx = STORE.length;
+            STORE.push({ l: p.l, d: p.d });
+            const { l, d } = STORE[idx];
+            if (p.source === "heuristic") heuristicCount += 1;
+
             let rendered;
             try {
               rendered = katex.renderToString(l, {
@@ -371,19 +610,25 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
             const boxClass = d
               ? "formula-box formula-box--block"
               : "formula-box formula-box--inline";
+            const sourceChip =
+              p.source === "heuristic"
+                ? `<span class="formula-source" title="Delimitersiz satırdan otomatik algılandı">AI tespiti</span>`
+                : "";
 
             const btns = `<span class="formula-actions">
-            <button type="button" class="btn btn--chip btn--info" onclick="cpML(${p.idx})">MathML kopyala</button>
-            <button type="button" class="btn btn--chip btn--success" onclick="dlPNG(${p.idx})">PNG indir</button>
+            ${sourceChip}
+            <button type="button" class="btn btn--chip btn--info" onclick="cpML(${idx})">MathML kopyala</button>
+            <button type="button" class="btn btn--chip btn--success" onclick="dlPNG(${idx})">PNG indir</button>
           </span>`;
 
-            html += `<span class="${wrapClass}"><span id="fm${p.idx}" class="${boxClass}">${rendered}</span>${btns}</span>`;
+            html += `<span class="${wrapClass}"><span id="fm${idx}" class="${boxClass}">${rendered}</span>${btns}</span>`;
           }
         }
 
         document.getElementById("ren").innerHTML = html;
-        document.getElementById("fc").textContent =
-          `${STORE.length} formül bulundu`;
+        document.getElementById("fc").textContent = heuristicCount
+          ? `${STORE.length} formül bulundu (${heuristicCount} AI tespiti)`
+          : `${STORE.length} formül bulundu`;
         document.getElementById("updatedAt").textContent =
           `Son dönüşüm: ${new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`;
         out.classList.remove("is-hidden");
@@ -391,12 +636,13 @@ For matrix notation, $\\mathbf{A}\\mathbf{x} = \\mathbf{b}$ can be solved using 
 
       document.getElementById("inp").addEventListener("input", updateInputStats);
       document.getElementById("inp").addEventListener("keydown", (e) => {
-        if (e.ctrlKey && e.key === "Enter") {
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
           e.preventDefault();
           convert();
         }
       });
       updateInputStats();
+      updatePlatformHint();
     </script>
   </body>
 </html>
